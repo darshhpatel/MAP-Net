@@ -78,6 +78,11 @@ class HWFolderMultipleGTDataset(BaseDHDataset):
         self.num_input_frames = num_input_frames
 
         self.data_infos = self.load_annotations()
+        print(f"[HWFolderMultipleGTDataset] lq_folder: {self.lq_folder}")
+        print(f"[HWFolderMultipleGTDataset] gt_folder: {self.gt_folder}")
+        print(f"[HWFolderMultipleGTDataset] ann_file: {self.ann_file}")
+        print(f"[HWFolderMultipleGTDataset] num_input_frames: {self.num_input_frames}")
+        print(f"[HWFolderMultipleGTDataset] Loaded {len(self.data_infos)} samples.")
 
     def _load_annotations_from_file(self):
         data_infos = []
@@ -119,15 +124,27 @@ class HWFolderMultipleGTDataset(BaseDHDataset):
         if self.ann_file is not None:
             return self._load_annotations_from_file()
         else:
-            # May encounter some unexpected errors especially when with ceph storage.
-            raise NotImplementedError
-
-        logger = get_root_logger()
-        datasets = os.listdir(self.lq_folder)
-        assert datasets == os.listdir(self.gt_folder)
-        datasets.sort()
-        logger.info(f'Datasets ({len(datasets)}): {datasets}')
-        data_infos = []
+            # New implementation: each subfolder in lq_folder/gt_folder is a video clip
+            lq_clip_folders = sorted([d for d in os.listdir(self.lq_folder) if osp.isdir(osp.join(self.lq_folder, d))])
+            gt_clip_folders = sorted([d for d in os.listdir(self.gt_folder) if osp.isdir(osp.join(self.gt_folder, d))])
+            assert set(lq_clip_folders) == set(gt_clip_folders), "Mismatch between LQ and GT clip folders."
+            data_infos = []
+            for clip in lq_clip_folders:
+                lq_clip_path = osp.join(self.lq_folder, clip)
+                gt_clip_path = osp.join(self.gt_folder, clip)
+                lq_files = sorted([f for f in os.listdir(lq_clip_path) if osp.isfile(osp.join(lq_clip_path, f))])
+                gt_files = sorted([f for f in os.listdir(gt_clip_path) if osp.isfile(osp.join(gt_clip_path, f))])
+                assert set(lq_files) == set(gt_files), f"Mismatch between LQ and GT files in clip {clip}."
+                # Split into clips of num_input_frames
+                for i in range(0, len(lq_files) - self.num_input_frames + 1):
+                    lq_paths = [osp.join(lq_clip_path, lq_files[j]) for j in range(i, i + self.num_input_frames)]
+                    gt_paths = [osp.join(gt_clip_path, gt_files[j]) for j in range(i, i + self.num_input_frames)]
+                    data_infos.append({
+                        'lq_path': lq_paths,
+                        'gt_path': gt_paths,
+                        'key': f"{clip}_{i}"
+                    })
+            return data_infos
         for dataset in datasets:
             folders = os.listdir(osp.join(osp.join(self.lq_folder, dataset)))
             assert folders == os.listdir(osp.join(osp.join(self.gt_folder, dataset)))

@@ -24,7 +24,7 @@ _integer_ranges = {
 
 dtype_range = {
     np.bool_: (False, True),
-    np.bool8: (False, True),
+    np.bool_: (False, True),
     np.float16: (-1, 1),
     np.float32: (-1, 1),
     np.float64: (-1, 1)

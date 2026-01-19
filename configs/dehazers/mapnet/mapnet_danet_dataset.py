@@ -1,12 +1,17 @@
+
+
+
 # MAP-Net config for DA-Net dataset (professional, publication-ready)
 _base_ = [
     '../_base_/default_runtime.py',
     './mapnet_runtime.py',
 ]
 
+checkpoint_config = dict(interval=1)
+total_iters = 40000  # Set to your desired number of iterations
+
 exp_name = 'mapnet_danet_dataset_40k'
 
-# Model settings: match DA-Net as closely as possible
 model = dict(
     type='MAP',
     generator=dict(
@@ -34,19 +39,13 @@ model = dict(
         ),
         channels=32,
         num_trans_bins=32,
-        align_depths=(1, 1, 2, 1, 1),  # Match DA-Net depths
+        align_depths=(1, 1, 2, 1),  # Match kernel_sizes length
         num_kv_frames=[1, 2, 3],
     ),
     pixel_loss=dict(type='L1Loss', loss_weight=1.0, reduction='mean'),
 )
 
 data = dict(
-    train_dataloader=dict(samples_per_gpu=2, drop_last=True),
-)
-
-# Dataset settings: use DA-Net dataset structure
-# (Assume dataset/RSID/train/hazy, dataset/RSID/train/GT, etc.)
-custom_data = dict(
     workers_per_gpu=6,
     train_dataloader=dict(samples_per_gpu=4, drop_last=True),
     val_dataloader=dict(samples_per_gpu=1, workers_per_gpu=2),
@@ -54,9 +53,9 @@ custom_data = dict(
 
     train=dict(
         type='HWFolderMultipleGTDataset',
-        lq_folder='../../dataset/RSID/train/hazy',
-        gt_folder='../../dataset/RSID/train/GT',
-        ann_file=None,
+        lq_folder='dataset/RSID/train/hazy',
+        gt_folder='dataset/RSID/train/GT',
+        ann_file=None,  # If you have annotation files, set here
         num_input_frames=5,
         pipeline=[
             dict(type='LoadImageFromFileList', io_backend='disk', key='lq', flag='unchanged'),
@@ -72,8 +71,8 @@ custom_data = dict(
         test_mode=False),
     val=dict(
         type='HWFolderMultipleGTDataset',
-        lq_folder='../../dataset/RSID/test/hazy',
-        gt_folder='../../dataset/RSID/test/GT',
+        lq_folder='dataset/RSID/test/hazy',
+        gt_folder='dataset/RSID/test/GT',
         ann_file=None,
         pipeline=[
             dict(type='LoadImageFromFileList', io_backend='disk', key='lq', flag='unchanged'),
@@ -87,8 +86,8 @@ custom_data = dict(
         test_mode=False),
     test=dict(
         type='HWFolderMultipleGTDataset',
-        lq_folder='../../dataset/RSID/test/hazy',
-        gt_folder='../../dataset/RSID/test/GT',
+        lq_folder='dataset/RSID/test/hazy',
+        gt_folder='dataset/RSID/test/GT',
         ann_file=None,
         pipeline=[
             dict(type='LoadImageFromFileList', io_backend='disk', key='lq', flag='unchanged'),
